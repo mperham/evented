@@ -1,12 +1,22 @@
-= Evented =
+= Evented
 
 A repository for event-driven examples and so much more!
 
 Got a non-trivial sample?  Please submit it to me for inclusion.  It should
-integrate more than one event-driven subsystem: web and memcached, web and db,
-you name it, but no more 10 line echo server examples!  They are junk
-and don't teach much beyond a 30 second overview.
+integrate more than one event-driven subsystem; no more 10 line echo server 
+examples!  They are junk and don't teach much beyond a 30 second overview.
 
-= Your Host =
+I'd like to see examples of calling:
 
-I'm mperham everywhere that matters.
+ - 3rd party web services
+ - database (mysql or postgresql)
+ - memcached
+
+== Examples
+
+The first non-trivial sample is a Thin-based thumbnail service which calls
+S3 asynchronously.
+
+== Your Host
+
+I'm *mperham* everywhere that matters.
