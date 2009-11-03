@@ -57,7 +57,7 @@ class Thumbnailer
       # we can see the image in our local browser.
       development?(env) ? [File.read(img.file_location)] : []] if img.cached?
       
-    # We've done all we can synchonously.  Next we need to pull the data from S3 and
+    # We've done all we can synchronously.  Next we need to pull the data from S3 and
     # return a response based on the result.
     EventMachine.next_tick do
       body = DeferrableBody.new

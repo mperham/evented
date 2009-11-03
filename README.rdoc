@@ -1,8 +1,12 @@
 = Evented
 
-A repository for event-driven examples and so much more!
+A repository for EventMachine (or anything based on EventMachine) examples
+and so much more!
 
-Got a non-trivial sample?  Please submit it to me for inclusion.  It should
+Because the event-driven programming model is so different to 'normal' programming,
+good examples are critical to learning how to solve problems the 'event' way.
+
+Got a non-trivial example?  Please submit it to me for inclusion.  It should
 integrate more than one event-driven subsystem; no more 10 line echo server 
 examples!  They are junk and don't teach much beyond a 30 second overview.
 
@@ -14,7 +18,7 @@ I'd like to see examples of calling:
 
 == Examples
 
-The first non-trivial sample is a Thin-based thumbnail service which calls
+The first non-trivial example is a Thin-based thumbnail service which calls
 S3 asynchronously.
 
 == Your Host
