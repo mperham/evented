@@ -15,11 +15,20 @@ I'd like to see examples of calling:
  - 3rd party web services
  - database (mysql or postgresql)
  - memcached
+ - message queue processing
 
 == Examples
 
-The first non-trivial example is a Thin-based thumbnail service which calls
-S3 asynchronously.
+=== thin/thumbnailer.rb
+
+A Thin-based thumbnail service which transparently pulls original images off S3 and thumbnails them according to URL parameters.
+
+=== qanat
+
+A SQS-based message queue processor.  Qanat will process up to 10 messages concurrently.
+
+Sidenote: Qanat is one of the few official Scrabble words which does
+not contain a U.  It is the Arabic word for an underground irrigation canal.
 
 == Your Host
 

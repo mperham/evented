@@ -1,0 +1,14 @@
+# Copy this file to ~/.qanat.sqs.yml and add your AWS key data.
+defaults: &defaults
+  access_key: invalid_access_key
+  secret_key: invalid_secret_key
+  timeout: 5
+
+development:
+  <<: *defaults
+
+test:
+  <<: *defaults
+
+production:
+  <<: *defaults
