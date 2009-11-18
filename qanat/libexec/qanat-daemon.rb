@@ -33,7 +33,7 @@ SQS.run do
   
   recharge = proc {
     DaemonKit.logger.info "recharge"
-    sqs.receive_msg do |msg|
+    sqs.receive_msg(concurrency) do |msg|
       DaemonKit.logger.info "pushing to local #{local.size}"
       local.push(msg)
     end

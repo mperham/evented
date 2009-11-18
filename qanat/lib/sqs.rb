@@ -41,30 +41,29 @@ module SQS
       end
     end
     
-    def receive_msg(&block)
+    def receive_msg(count=1, &block)
       request_hash = generate_request_hash("ReceiveMessage", 
-        'MaxNumberOfMessages'  => 1, 
+        'MaxNumberOfMessages'  => count,
         'VisibilityTimeout' => 3600)
       http = EventMachine::HttpRequest.new("http://queue.amazonaws.com/#{@name}").post :body => request_hash, :timeout => timeout
       http.callback do
         code = http.response_header.status
         doc = parse_response(http.response)
-        handle_el = doc.find_first('//sqs:ReceiptHandle')
-        id_el = doc.find_first('//sqs:MessageId')
-        md5_el = doc.find_first('//sqs:MD5OfBody')
-        body_el = doc.find_first('//sqs:Body')
-        if id_el && md5_el && body_el && handle_el
-          message_id = id_el.content.strip
-          checksum = md5_el.content.strip
-          body = body_el.content.strip
-          handle = handle_el.content.strip
+        msgs = doc.find('//sqs:Message')
+        if msgs.size > 0
+          msgs.each do |msg|
+            handle = msg.find_first('//sqs:ReceiptHandle').content.strip
+            message_id = msg.find_first('//sqs:MessageId').content.strip
+            checksum = msg.find_first('//sqs:MD5OfBody').content.strip
+            body = msg.find_first('//sqs:Body').content.strip
           
-          if checksum != Digest::MD5.hexdigest(body)
-            logger.info "SQS message does not match checksum, ignoring..."
-          else
-            logger.info "Queued message, SQS message id is: #{message_id}"
-            block.call body
-            delete_msg(handle)
+            if checksum != Digest::MD5.hexdigest(body)
+              logger.info "SQS message does not match checksum, ignoring..."
+            else
+              logger.info "Queued message, SQS message id is: #{message_id}"
+              block.call body
+              delete_msg(handle)
+            end
           end
         elsif code == 200
           logger.info "Queue #{@name} is empty"
