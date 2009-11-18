@@ -12,42 +12,39 @@ end
 require 'sqs'
 
 SQS.run do
+  
+  concurrency = 10
   local = EM::Queue.new
   sqs = SQS::Queue.new('test')
   
-  concurrency = 10
-  process_one = proc{ |msg|
+  process_one = proc { |msg|
+    DaemonKit.logger.info "process_one"
     process(msg) {
       pop_next
     }
   }
 
   pop_next = proc {
+    DaemonKit.logger.info "pop_next"
     local.pop(process_one)
+  }
+
+  concurrency.times { pop_next }
+  
+  recharge = proc {
+    DaemonKit.logger.info "recharge"
     sqs.receive_msg do |msg|
+      DaemonKit.logger.info "pushing to local #{local.size}"
       local.push(msg)
     end
   }
 
-  concurrency.times {
-    sqs.receive_msg do |msg|
-      local.push(msg)
-      pop_next
-    end
-  }
+  recharge.call
+  EM.add_periodic_timer(30, &recharge)
   
-  recharge = proc { |msg|
-    local.push(msg)
-    pop_next
-  }
-  
-  EM.add_periodic_timer(30) do
-    (concurrency - local.size).times do
-      sqs.receive_msg(&recharge)
-    end
-  end
 end
 
 def process(msg)
   DaemonKit.logger.info "Processing #{msg}"
+  yield
 end

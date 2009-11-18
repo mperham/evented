@@ -25,10 +25,14 @@ module SQS
       DaemonKit.logger
     end
     
+    def timeout
+      Integer(@config['timeout'])
+    end
+
     def delete_msg(handle)
       logger.info "Deleting #{handle}"
       request_hash = generate_request_hash("DeleteMessage", 'ReceiptHandle' => handle)
-      http = EventMachine::HttpRequest.new("http://queue.amazonaws.com/#{@name}").get :query => request_hash, :timeout => 10
+      http = EventMachine::HttpRequest.new("http://queue.amazonaws.com/#{@name}").get :query => request_hash, :timeout => timeout
       http.callback do
         code = http.response_header.status
         if code != 200
@@ -41,7 +45,7 @@ module SQS
       request_hash = generate_request_hash("ReceiveMessage", 
         'MaxNumberOfMessages'  => 1, 
         'VisibilityTimeout' => 3600)
-      http = EventMachine::HttpRequest.new("http://queue.amazonaws.com/#{@name}").post :body => request_hash, :timeout => 10
+      http = EventMachine::HttpRequest.new("http://queue.amazonaws.com/#{@name}").post :body => request_hash, :timeout => timeout
       http.callback do
         code = http.response_header.status
         doc = parse_response(http.response)
