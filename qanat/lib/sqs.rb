@@ -94,9 +94,9 @@ module SQS
       if !recharging && local.size == 0
         self.recharging = true
         DaemonKit.logger.info "scheduling recharge"
-        EM.next_tick(EM.Callback(self, :recharge))
+        EM.next_tick(method(:recharge))
       end
-      local.pop(EM.Callback(self, :process_one))
+      local.pop(method(:process_one))
     end
 
     def recharge
@@ -117,7 +117,7 @@ module SQS
 
       concurrency.times { pop_next }
 
-      EM.add_periodic_timer(30, EM.Callback(self, :recharge))
+      EM.add_periodic_timer(30, method(:recharge))
     end
 
     
