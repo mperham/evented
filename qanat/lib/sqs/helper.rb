@@ -33,10 +33,10 @@ module SQS
     # CGI::escape will escape characters in the protocol, host, and port
     # sections of the URI.  Only target chars in the query
     # string should be escaped.
-    # def URLencode(raw)
-    #   e = URI.escape(raw)
-    #   e.gsub(/\+/, "%2b")
-    # end
+    def URLencode(raw)
+      e = URI.escape(raw)
+      e.gsub(/\+/, "%2b")
+    end
     
     def aws_access_key_id
       @config['access_key']
@@ -57,7 +57,7 @@ module SQS
       request_hash["MessageBody"] = message if message
       request_hash.merge!(params)
       request_data = request_hash.sort{|a,b| (a[0].to_s.downcase)<=>(b[0].to_s.downcase)}.to_s
-      request_hash['Signature'] = sign(request_data)
+      request_hash['Signature'] = URLencode(sign(request_data))
       logger.debug "request_hash:\n#{request_hash.pretty_inspect}"
       return request_hash
     end
