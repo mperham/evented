@@ -52,6 +52,9 @@ module SQS
         msgs = doc.find('//sqs:Message')
         if msgs.size > 0
           msgs.each do |msg|
+            handle_el = msg.find_first('//sqs:ReceiptHandle')
+            (logger.info msg; next) if !handle_el
+
             handle = msg.find_first('//sqs:ReceiptHandle').content.strip
             message_id = msg.find_first('//sqs:MessageId').content.strip
             checksum = msg.find_first('//sqs:MD5OfBody').content.strip
@@ -79,6 +82,53 @@ module SQS
         # TODO dump the message to a temp file and write a utility to re-send dumped messages
       end
     end
+    
+    def process_one(msg, &block)
+      DaemonKit.logger.info "process_one"
+      processing_block.call(msg)
+      pop_next
+    end
+    
+    def pop_next
+      DaemonKit.logger.info "pop_next"
+      if !recharging && local.size == 0
+        self.recharging = true
+        DaemonKit.logger.info "scheduling recharge"
+        EM.next_tick(EM.Callback(self, :recharge))
+      end
+      local.pop(EM.Callback(self, :process_one))
+    end
+
+    def recharge
+      DaemonKit.logger.info "recharge"
+      if local.size < concurrency
+        receive_msg(concurrency - local.size) do |msg|
+          DaemonKit.logger.info "pushing to local #{local.size}"
+          local.push(msg)
+          self.recharging = false
+        end
+      end
+    end
+
+    def poll(concurrency, &block)
+      @concurrency = concurrency
+      @recharging = false
+      @processing_block = block
+
+      concurrency.times { pop_next }
+
+      EM.add_periodic_timer(30, EM.Callback(self, :recharge))
+    end
+
+    
+    private
+    
+    attr_accessor :recharging, :concurrency, :processing_block
+    
+    def local
+      @local ||= EM::Queue.new
+    end
+      
     
   end
 end
