@@ -10,6 +10,28 @@ DaemonKit::Application.running! do |config|
 end
 
 require 'sqs'
+require 'simpledb'
+
+def dispatch(msg, priority)
+  notify_upon_exception('jobber', msg) do |hash|
+    name = hash.fetch(:msg_type).to_s.camelize
+    profile hash.inspect do
+      name.constantize.new.process(hash, priority)
+    end
+  end
+end
+
+def notify_upon_exception(name, ctx)
+  return yield(ctx) if Rails.env == 'test'
+
+  begin
+    yield ctx
+  rescue => exception
+    DaemonKit.logger.info "Exception: #{exception.message}"
+    DaemonKit.logger.info exception.backtrace.join("\n")
+  end
+end
+
 
 SQS.run do
   
@@ -17,9 +39,9 @@ SQS.run do
   
   sqs = SQS::Queue.new('test')
   sqs.poll(5) do |msg|
-    sec = rand(10) + 1
-    DaemonKit.logger.info "Processing #{msg} for #{sec} seconds"
-    fiber_sleep(sec)
+    DaemonKit.logger.info "Processing #{msg}"
+    obj = YAML::load(msg)
+    dispatch(obj, priority)
   end
   
 end

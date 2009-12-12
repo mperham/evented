@@ -22,7 +22,11 @@ module SQS
   end
   
   class Queue
-    include Helper
+    DEFAULT_HOST      = "queue.amazonaws.com"
+    REQUEST_TTL       = 30
+    API_VERSION       = "2008-01-01"
+    
+    include AmazonHelper
 
     def initialize(name)
       @config = Qanat.load('sqs')
@@ -90,7 +94,7 @@ module SQS
     
     def async_operation(method, args)
       f = Fiber.current
-      http = EventMachine::HttpRequest.new("http://queue.amazonaws.com/#{@name}").send(method, args)
+      http = EventMachine::HttpRequest.new("http://#{DEFAULT_HOST}/#{@name}").send(method, args)
       http.callback { f.resume(http) }
       http.errback { f.resume(http) }
 
@@ -103,6 +107,15 @@ module SQS
     
     def timeout
       Integer(@config['timeout'])
+    end
+    
+    def default_parameters
+      request_hash = { "Expires"          => (Time.now + REQUEST_TTL).utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                       "Version"          => API_VERSION }
+    end
+    
+    def default_prefix
+      'sqs'
     end
 
   end
