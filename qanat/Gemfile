@@ -1,0 +1,5 @@
+disable_system_gems
+
+gem 'libxml-ruby'
+gem 'daemon-kit'
+gem 'em-http-request'

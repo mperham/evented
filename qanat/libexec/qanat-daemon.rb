@@ -15,12 +15,12 @@ SQS.run do
   
   DaemonKit.logger.info "start"
   
-  recharging = false
-  
   sqs = SQS::Queue.new('test')
-  
   sqs.poll(5) do |msg|
-    DaemonKit.logger.info "Processing #{msg}"
+    sec = rand(10) + 1
+    DaemonKit.logger.info "Processing #{msg} for #{sec} seconds"
+    fiber_sleep(sec)
   end
   
 end
+

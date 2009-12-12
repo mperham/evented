@@ -4,6 +4,7 @@
 #ENV['DAEMON_ENV'] ||= 'production'
 
 # Boot up
+require File.join(File.dirname(__FILE__), '../vendor/gems/environment')
 require File.join(File.dirname(__FILE__), 'boot')
 
 DaemonKit::Initializer.run do |config|

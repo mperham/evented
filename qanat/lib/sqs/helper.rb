@@ -1,9 +1,7 @@
 require "cgi"
 require "base64"
-require "rexml/document"
 require "openssl"
 require "digest/sha1"
-require 'md5'
 require 'xml'
 require 'pp'
 
@@ -21,6 +19,7 @@ module SQS
     @@digest = OpenSSL::Digest::Digest.new("sha1")
 
     def sign(auth_string)
+      p [aws_access_key_id, aws_secret_access_key]
       Base64.encode64(OpenSSL::HMAC.digest(@@digest, aws_secret_access_key, auth_string)).strip
     end
 
@@ -56,7 +55,7 @@ module SQS
                        "SignatureVersion" => SIGNATURE_VERSION }
       request_hash["MessageBody"] = message if message
       request_hash.merge!(params)
-      request_data = request_hash.sort{|a,b| (a[0].to_s.downcase)<=>(b[0].to_s.downcase)}.to_s
+      request_data = request_hash.sort{|a,b| (a[0].to_s.downcase)<=>(b[0].to_s.downcase)}.join('')
       request_hash['Signature'] = URLencode(sign(request_data))
       logger.debug "request_hash:\n#{request_hash.pretty_inspect}"
       return request_hash
