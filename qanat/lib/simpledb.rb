@@ -1,20 +1,90 @@
+require "cgi"
+require "base64"
+require "openssl"
+require "digest/sha1"
+require 'xml'
+require 'pp'
+
+require 'fiber'
+require 'em-http'
+
 module Simpledb
-  class Database
-    include AmazonHelper
+  DEFAULT_HOST = 'sdb.amazonaws.com'
+  API_VERSION = '2007-11-07'
+  
+  module Authentication
+
+    SIGNATURE_VERSION = "2"
+    @@digest = OpenSSL::Digest::Digest.new("sha256")
+
+    def sign(auth_string)
+      Base64.encode64(OpenSSL::HMAC.digest(@@digest, aws_secret_access_key, auth_string)).strip
+    end
+
+    # From Amazon's SQS Dev Guide, a brief description of how to escape:
+    # "URL encode the computed signature and other query parameters as specified in 
+    # RFC1738, section 2.2. In addition, because the + character is interpreted as a blank space 
+    # by Sun Java classes that perform URL decoding, make sure to encode the + character 
+    # although it is not required by RFC1738."
+    # Avoid using CGI::escape to escape URIs. 
+    # CGI::escape will escape characters in the protocol, host, and port
+    # sections of the URI.  Only target chars in the query
+    # string should be escaped.
+    def URLencode(raw)
+      e = URI.escape(raw)
+      e.gsub(/\+/, "%2b")
+    end
+
+    def aws_access_key_id
+      @config['access_key']
+    end
+
+    def aws_secret_access_key
+      @config['secret_key']
+    end
     
-    DEFAULT_HOST = 'sdb.amazonaws.com'
-    API_VERSION = '2007-11-07'
+    def amz_escape(param)
+      param.to_s.gsub(/([^a-zA-Z0-9._~-]+)/n) do
+        '%' + $1.unpack('H2' * $1.size).join('%').upcase
+      end
+    end
+
+    def with_signature(verb, host=DEFAULT_HOST, path='/')
+      hash = yield
+      data = hash.keys.sort.map do |key|
+        "#{amz_escape(key)}=#{amz_escape(hash[key])}"
+      end.join('&')
+      hash['Signature'] = URLencode(sign("#{verb}\n#{host}\n#{path}\n#{data}"))
+      hash
+    end
+
+    def generate_request_hash(action, params={})
+      request_hash = { 
+        "Action" => action,
+        "SignatureMethod" => 'HmacSHA256',
+        "AWSAccessKeyId" => aws_access_key_id,
+        "SignatureVersion" => SIGNATURE_VERSION,
+      }
+#      request_hash["MessageBody"] = message if message
+      request_hash.merge(default_parameters).merge(params)
+    end
+
+  end
+  
+  class Database
+    include Authentication
     
     def initialize(domain)
+      @config = Qanat.load('sqs')
       @domain = domain
     end
 
     def get(id)
       request_hash = generate_request_hash("GetAttributes", 'ItemName' => id)
-      http = async_operation(:get, { :query => request_hash, :timeout => timeout })
+      http = async_operation(:get, request_hash, :timeout => timeout)
       code = http.response_header.status
       if code != 200
-        logger.error "SQS delete returned an error response: #{code} #{http.response}"
+        logger.error "SDB got an error response: #{code} #{http.response}"
       end
       doc = parse_response(http.response)
       puts doc
@@ -26,7 +96,7 @@ module Simpledb
       attribs.each_pair do |k, v|
         hash["Attribute.#{idx}.Name"] = URLencode(k)
         hash["Attribute.#{idx}.Value"] = URLencode(v)
-        idx++
+        idx = idx + 1
       end
       request_hash = generate_request_hash("PutAttributes", hash)
       http = async_operation(:post, { :body => request_hash, :timeout => timeout })
@@ -35,8 +105,7 @@ module Simpledb
     private
     
     def default_parameters
-      #GET http:///?AWSAccessKeyId=14MHSD78AFZA0999PMR2&Action=CreateDomain&DomainName=images-test&SignatureMethod=HmacSHA256&SignatureVersion=2&Timestamp=2009-12-12T20%3A27%3A42.000Z&Version=2007-11-07&Signature=uoGQYZTJRQ%2BbM2MBjRvEz2UCcAbezKjAgbbfuoC0T00%3D
-      #http://sdb.amazonaws.com/?AWSAccessKeyId=14MHSD78AFZA0999PMR2
+      #http://sdb.amazonaws.com/?AWSAccessKeyId=nosuchkey
         # &Action=GetAttributes
         # &DomainName=images-test
         # &ItemName=0000000000000000000000000000000000000001
@@ -52,22 +121,37 @@ module Simpledb
       }
     end
 
-    def async_operation(method, args)
+    def async_operation(method, parameters, opts)
       f = Fiber.current
-      http = EventMachine::HttpRequest.new("http://#{DEFAULT_HOST}/#{@name}").send(method, args)
+      hash = with_signature(method.to_s.upcase) do
+        parameters
+      end
+      p hash
+      args = if method == :get
+        { :query => hash }.merge(opts)
+      else
+        { :body => hash }.merge(opts)
+      end
+      http = EventMachine::HttpRequest.new("http://#{DEFAULT_HOST}/").send(method, args)
       http.callback { f.resume(http) }
       http.errback { f.resume(http) }
 
       return Fiber.yield
     end
 
+    def logger
+      DaemonKit.logger
+    end
+
     def timeout
       Integer(@config['timeout'] || 10)
     end
 
-    def default_prefix
-      'sdb'
+    def parse_response(string)
+      parser = XML::Parser.string(string)
+      doc = parser.parse
+      doc.root.namespaces.default_prefix = 'sdb'
+      return doc
     end
-
   end
 end
