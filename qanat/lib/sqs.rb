@@ -2,7 +2,7 @@ require "cgi"
 require "base64"
 require "openssl"
 require "digest/sha1"
-require 'xml'
+require 'nokogiri'
 require 'pp'
 
 require 'fiber'
