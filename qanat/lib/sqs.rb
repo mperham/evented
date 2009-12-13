@@ -18,8 +18,8 @@ def fiber_sleep(sec)
 end
 
 module SQS
-  DEFAULT_HOST      = "queue.amazonaws.com"
-  API_VERSION       = "2008-01-01"
+  DEFAULT_HOST = "queue.amazonaws.com"
+  API_VERSION = "2008-01-01"
 
   def self.run(&block)
     # Ensure graceful shutdown of the connection to the broker
@@ -32,7 +32,7 @@ module SQS
   end
 
   class Queue
-    REQUEST_TTL       = 30
+    REQUEST_TTL = 30
     
     include Amazon::Authentication
 
@@ -70,29 +70,29 @@ module SQS
           'VisibilityTimeout' => 600)
       http = async_operation(:get, request_hash, :timeout => timeout)
       code = http.response_header.status
-      doc = parse_response(http.response)
-      msgs = doc.find('//sqs:Message')
-      if msgs.size > 0
-        msgs.each do |msg|
-          handle_el = msg.find_first('//sqs:ReceiptHandle')
-          (logger.info msg; next) if !handle_el
+      if code == 200
+        doc = Nokogiri::XML(http.response)
+        msgs = doc.xpath('//xmlns:Message')
+        if msgs.size > 0
+          msgs.each do |msg|
+            handle_el = msg.at_xpath('.//xmlns:ReceiptHandle')
+            (logger.info msg; next) if !handle_el
           
-          handle = msg.find_first('//sqs:ReceiptHandle').content.strip
-          message_id = msg.find_first('//sqs:MessageId').content.strip
-          checksum = msg.find_first('//sqs:MD5OfBody').content.strip
-          body = msg.find_first('//sqs:Body').content.strip
+            handle = msg.at_xpath('.//xmlns:ReceiptHandle').content
+            message_id = msg.at_xpath('.//xmlns:MessageId').content
+            checksum = msg.at_xpath('.//xmlns:MD5OfBody').content
+            body = msg.at_xpath('.//xmlns:Body').content
                   
-          if checksum != Digest::MD5.hexdigest(body)
-            logger.info "SQS message does not match checksum, ignoring..."
-          else
-            logger.info "Queued message, SQS message id is: #{message_id}"
-            block.call body
-            delete_msg(handle)
+            if checksum != Digest::MD5.hexdigest(body)
+              logger.info "SQS message does not match checksum, ignoring..."
+            else
+              block.call body
+              delete_msg(handle)
+            end
           end
+        else
+          logger.info "Queue #{@name} is empty"
         end
-      elsif code == 200
-        logger.info "Queue #{@name} is empty"
-        fiber_sleep(5)
       else
         logger.error "SQS returned an error response: #{code} #{http.response}"
         # TODO parse the response and print something useful
@@ -116,12 +116,8 @@ module SQS
     end
 
     def default_parameters
-      request_hash = { "Expires"          => (Time.now + REQUEST_TTL).utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                       "Version"          => API_VERSION }
-    end
-    
-    def default_prefix
-      'sqs'
+      request_hash = { "Expires" => (Time.now + REQUEST_TTL).utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                       "Version" => API_VERSION }
     end
     
     def logger
@@ -130,13 +126,6 @@ module SQS
 
     def timeout
       Integer(@config['timeout'])
-    end
-
-    def parse_response(string)
-      parser = XML::Parser.string(string)
-      doc = parser.parse
-      doc.root.namespaces.default_prefix = default_prefix
-      return doc
     end
   end
 end

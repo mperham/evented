@@ -51,23 +51,23 @@ IMAGE_SETS =
 SQS.run do
   DaemonKit.logger.info "start"
   
-  sdb = Simpledb::Database.new('images-staging')
-  IMAGE_SETS.each_with_index do |images, idx|
-    Fiber.new do
-      images.each do |iid|
-        p [idx, sdb.get(iid)]
-      end
-    end.resume
-  end
-  
-  # sqs = SQS::Queue.new('test')
-  # 
-  # sqs.poll(5) do |msg|
-  #   DaemonKit.logger.info "Processing #{msg}"
-  #   
-  #   # obj = YAML::load(msg)
-  #   # dispatch(obj, priority)
+  # sdb = Simpledb::Database.new('images-staging')
+  # IMAGE_SETS.each_with_index do |images, idx|
+  #   Fiber.new do
+  #     images.each do |iid|
+  #       p [idx, sdb.get(iid)]
+  #     end
+  #   end.resume
   # end
+  
+  sqs = SQS::Queue.new('test')
+  
+  sqs.poll(5) do |msg|
+    DaemonKit.logger.info "Processing #{msg}"
+    
+    # obj = YAML::load(msg)
+    # dispatch(obj, priority)
+  end
   
 end
 
