@@ -7,6 +7,7 @@ require 'pp'
 
 require 'fiber'
 require 'em-http'
+require 'authentication'
 
 def fiber_sleep(sec)
   f = Fiber.current
@@ -17,6 +18,9 @@ def fiber_sleep(sec)
 end
 
 module SQS
+  DEFAULT_HOST      = "queue.amazonaws.com"
+  API_VERSION       = "2008-01-01"
+
   def self.run(&block)
     # Ensure graceful shutdown of the connection to the broker
     DaemonKit.trap('INT') { ::EM.stop }
@@ -26,64 +30,11 @@ module SQS
     DaemonKit.logger.debug("EM.run")
     EM.run(&block)
   end
-  
-  module Authentication
-    SIGNATURE_VERSION = "2"
-    @@digest = OpenSSL::Digest::Digest.new("sha256")
-
-    def sign(auth_string)
-      Base64.encode64(OpenSSL::HMAC.digest(@@digest, aws_secret_access_key, auth_string)).strip
-    end
-
-    # From Amazon's SQS Dev Guide, a brief description of how to escape:
-    # "URL encode the computed signature and other query parameters as specified in 
-    # RFC1738, section 2.2. In addition, because the + character is interpreted as a blank space 
-    # by Sun Java classes that perform URL decoding, make sure to encode the + character 
-    # although it is not required by RFC1738."
-    # Avoid using CGI::escape to escape URIs. 
-    # CGI::escape will escape characters in the protocol, host, and port
-    # sections of the URI.  Only target chars in the query
-    # string should be escaped.
-    def URLencode(raw)
-      e = URI.escape(raw)
-      e.gsub(/\+/, "%2b")
-    end
-
-    def aws_access_key_id
-      @config['access_key']
-    end
-
-    def aws_secret_access_key
-      @config['secret_key']
-    end
-
-    def with_signature
-      hash = yield
-      data = hash.sort{|a,b| (a[0].to_s.downcase)<=>(b[0].to_s.downcase)}.join('')
-      hash['Signature'] = URLencode(sign(data))
-      hash
-    end
-
-    def generate_request_hash(action, params={})
-      with_signature do
-        request_hash = { 
-          "Action" => action,
-          "SignatureMethod" => 'HmacSHA256',
-          "AWSAccessKeyId" => aws_access_key_id,
-          "SignatureVersion" => SIGNATURE_VERSION,
-        }
-  #      request_hash["MessageBody"] = message if message
-        request_hash.merge(default_parameters).merge(params)
-      end
-    end
-  end  
 
   class Queue
-    DEFAULT_HOST      = "queue.amazonaws.com"
     REQUEST_TTL       = 30
-    API_VERSION       = "2008-01-01"
     
-    include Authentication
+    include Amazon::Authentication
 
     def initialize(name)
       @config = Qanat.load('sqs')
@@ -107,7 +58,7 @@ module SQS
     def delete_msg(handle)
       logger.info "Deleting #{handle}"
       request_hash = generate_request_hash("DeleteMessage", 'ReceiptHandle' => handle)
-      http = async_operation(:get, :query => request_hash, :timeout => timeout)
+      http = async_operation(:get, request_hash, :timeout => timeout)
       code = http.response_header.status
       if code != 200
         logger.error "SQS delete returned an error response: #{code} #{http.response}"
@@ -117,7 +68,7 @@ module SQS
     def receive_msg(count=1, &block)
       request_hash = generate_request_hash("ReceiveMessage", 'MaxNumberOfMessages'  => count,
           'VisibilityTimeout' => 600)
-      http = async_operation(:post, { :body => request_hash, :timeout => timeout })
+      http = async_operation(:get, request_hash, :timeout => timeout)
       code = http.response_header.status
       doc = parse_response(http.response)
       msgs = doc.find('//sqs:Message')
@@ -149,8 +100,14 @@ module SQS
       end
     end
     
-    def async_operation(method, args)
+    def async_operation(method, parameters, opts)
       f = Fiber.current
+      data = signed_parameters(parameters, method.to_s.upcase, DEFAULT_HOST, "/#{@name}")
+      args = if method == :get
+        { :query => data }.merge(opts)
+      else
+        { :body => data }.merge(opts)
+      end
       http = EventMachine::HttpRequest.new("http://#{DEFAULT_HOST}/#{@name}").send(method, args)
       http.callback { f.resume(http) }
       http.errback { f.resume(http) }

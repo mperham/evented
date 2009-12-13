@@ -1,5 +1,5 @@
 disable_system_gems
 
-gem 'libxml-ruby'
+gem 'nokogiri'
 gem 'daemon-kit'
 gem 'em-http-request'

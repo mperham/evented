@@ -2,92 +2,57 @@ require "cgi"
 require "base64"
 require "openssl"
 require "digest/sha1"
-require 'xml'
+require 'nokogiri'
 require 'pp'
 
 require 'fiber'
 require 'em-http'
+require 'authentication'
 
 module Simpledb
   DEFAULT_HOST = 'sdb.amazonaws.com'
   API_VERSION = '2007-11-07'
   
-  module Authentication
-
-    SIGNATURE_VERSION = "2"
-    @@digest = OpenSSL::Digest::Digest.new("sha256")
-
-    def sign(auth_string)
-      Base64.encode64(OpenSSL::HMAC.digest(@@digest, aws_secret_access_key, auth_string)).strip
-    end
-
-    # From Amazon's SQS Dev Guide, a brief description of how to escape:
-    # "URL encode the computed signature and other query parameters as specified in 
-    # RFC1738, section 2.2. In addition, because the + character is interpreted as a blank space 
-    # by Sun Java classes that perform URL decoding, make sure to encode the + character 
-    # although it is not required by RFC1738."
-    # Avoid using CGI::escape to escape URIs. 
-    # CGI::escape will escape characters in the protocol, host, and port
-    # sections of the URI.  Only target chars in the query
-    # string should be escaped.
-    def URLencode(raw)
-      e = URI.escape(raw)
-      e.gsub(/\+/, "%2b")
-    end
-
-    def aws_access_key_id
-      @config['access_key']
-    end
-
-    def aws_secret_access_key
-      @config['secret_key']
-    end
-    
-    def amz_escape(param)
-      param.to_s.gsub(/([^a-zA-Z0-9._~-]+)/n) do
-        '%' + $1.unpack('H2' * $1.size).join('%').upcase
-      end
-    end
-
-    def with_signature(verb, host=DEFAULT_HOST, path='/')
-      hash = yield
-      data = hash.keys.sort.map do |key|
-        "#{amz_escape(key)}=#{amz_escape(hash[key])}"
-      end.join('&')
-      hash['Signature'] = URLencode(sign("#{verb}\n#{host}\n#{path}\n#{data}"))
-      hash
-    end
-
-    def generate_request_hash(action, params={})
-      request_hash = { 
-        "Action" => action,
-        "SignatureMethod" => 'HmacSHA256',
-        "AWSAccessKeyId" => aws_access_key_id,
-        "SignatureVersion" => SIGNATURE_VERSION,
-      }
-#      request_hash["MessageBody"] = message if message
-      request_hash.merge(default_parameters).merge(params)
-    end
-
-  end
-  
   class Database
-    include Authentication
+    include Amazon::Authentication
     
     def initialize(domain)
       @config = Qanat.load('sqs')
       @domain = domain
     end
 
+=begin
+<?xml version="1.0" encoding="UTF-8"?>
+<GetAttributesResponse xmlns="http://sdb.amazonaws.com/doc/2007-11-07/">
+  <GetAttributesResult>
+    <Attribute>
+      <Name>alt</Name>
+      <Value>alife-40-below-4.jpg</Value>
+    </Attribute>
+    <Attribute>
+      <Name>fetch_url</Name>
+      <Value>http://thekaoseffect.com/blog/wp-content/uploads/2009/11/alife-40-below-4.jpg</Value>
+    </Attribute>
+    <Attribute>
+      <Name>created_at</Name>
+      <Value>20091105173159</Value>
+    </Attribute>
+  </GetAttributesResult>
+  <ResponseMetadata>
+    <RequestId>4842bf3b-cbdd-3f35-406d-1becc842b18c</RequestId>
+    <BoxUsage>0.0000093382</BoxUsage>
+  </ResponseMetadata>
+</GetAttributesResponse>
+=end
     def get(id)
       request_hash = generate_request_hash("GetAttributes", 'ItemName' => id)
       http = async_operation(:get, request_hash, :timeout => timeout)
       code = http.response_header.status
       if code != 200
         logger.error "SDB got an error response: #{code} #{http.response}"
+        return nil
       end
-      doc = parse_response(http.response)
-      puts doc
+      { 'id' => id }.merge(to_attributes(http.response))
     end
   
     def put(id, attribs)
@@ -103,6 +68,24 @@ module Simpledb
     end
     
     private
+    
+    def to_attributes(doc)
+      attributes = {}
+      xml = Nokogiri::XML(doc)
+      xml.xpath('//xmlns:Attribute').each do |node|
+        k = node.at_xpath('.//xmlns:Name').content
+        v = node.at_xpath('.//xmlns:Value').content
+        if attributes.has_key?(k)
+          if !attributes[k].is_a?(Array)
+            attributes[k] = Array(attributes[k])
+          end
+          attributes[k] << v
+        else
+          attributes[k] = v
+        end
+      end
+      attributes
+    end
     
     def default_parameters
       #http://sdb.amazonaws.com/?AWSAccessKeyId=nosuchkey
@@ -123,14 +106,11 @@ module Simpledb
 
     def async_operation(method, parameters, opts)
       f = Fiber.current
-      hash = with_signature(method.to_s.upcase) do
-        parameters
-      end
-      p hash
+      data = signed_parameters(parameters, method.to_s.upcase, DEFAULT_HOST, '/')
       args = if method == :get
-        { :query => hash }.merge(opts)
+        { :query => data }.merge(opts)
       else
-        { :body => hash }.merge(opts)
+        { :body => data }.merge(opts)
       end
       http = EventMachine::HttpRequest.new("http://#{DEFAULT_HOST}/").send(method, args)
       http.callback { f.resume(http) }
@@ -150,7 +130,7 @@ module Simpledb
     def parse_response(string)
       parser = XML::Parser.string(string)
       doc = parser.parse
-      doc.root.namespaces.default_prefix = 'sdb'
+#      doc.root.namespaces.default_prefix = 'sdb'
       return doc
     end
   end
