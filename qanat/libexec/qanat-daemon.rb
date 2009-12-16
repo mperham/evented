@@ -11,6 +11,8 @@ end
 
 require 'sqs'
 require 'simpledb'
+require 's3'
+require 'time'
 
 def dispatch(msg, priority)
   notify_upon_exception('jobber', msg) do |hash|
@@ -60,14 +62,19 @@ SQS.run do
   #   end.resume
   # end
   
-  sqs = SQS::Queue.new('test')
+  # sqs = SQS::Queue.new('test')
+  # 
+  # sqs.poll(5) do |msg|
+  #   DaemonKit.logger.info "Processing #{msg}"
+  #   
+  #   # obj = YAML::load(msg)
+  #   # dispatch(obj, priority)
+  # end
   
-  sqs.poll(5) do |msg|
-    DaemonKit.logger.info "Processing #{msg}"
-    
-    # obj = YAML::load(msg)
-    # dispatch(obj, priority)
-  end
-  
+  s3 = S3::Bucket.new('onespot-test')
+  Fiber.new do
+    s3.put('sqs.rb', File.read(File.dirname(__FILE__) + '/../lib/sqs.rb'))
+    puts s3.get('sqs.rb')
+  end.resume
 end
 

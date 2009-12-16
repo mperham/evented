@@ -4,7 +4,11 @@ module Amazon
     @@digest = OpenSSL::Digest::Digest.new("sha256")
 
     def sign(auth_string)
-      Base64.encode64(OpenSSL::HMAC.digest(@@digest, aws_secret_access_key, auth_string)).strip
+      Base64.encode64(OpenSSL::HMAC.digest(digester, aws_secret_access_key, auth_string)).strip
+    end
+    
+    def digester
+      @@digest
     end
 
     def aws_access_key_id
