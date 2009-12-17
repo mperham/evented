@@ -9,7 +9,7 @@ module S3
     include Amazon::Authentication
     
     def initialize(bucket)
-      @config = Qanat.load('sqs')
+      @config = Qanat.load('amzn')
       @bucket = bucket
     end
     

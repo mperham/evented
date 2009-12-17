@@ -9,11 +9,6 @@ DaemonKit::Application.running! do |config|
   # config.trap( 'TERM', Proc.new { puts 'Going down' } )
 end
 
-require 'sqs'
-require 'simpledb'
-require 's3'
-require 'time'
-
 def dispatch(msg, priority)
   notify_upon_exception('jobber', msg) do |hash|
     name = hash.fetch(:msg_type).to_s.camelize
@@ -50,7 +45,7 @@ IMAGE_SETS =
     ["6e353eebef1a51c9f00854e072c6ce645d0881f1"],
   ]
 
-SQS.run do
+Qanat.run do
   DaemonKit.logger.info "start"
   
   # sdb = Simpledb::Database.new('images-staging')

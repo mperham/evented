@@ -1,14 +1,3 @@
-require "cgi"
-require "base64"
-require "openssl"
-require "digest/sha1"
-require 'nokogiri'
-require 'pp'
-
-require 'fiber'
-require 'em-http'
-require 'authentication'
-
 module Simpledb
   DEFAULT_HOST = 'sdb.amazonaws.com'
   API_VERSION = '2007-11-07'
@@ -17,7 +6,7 @@ module Simpledb
     include Amazon::Authentication
     
     def initialize(domain)
-      @config = Qanat.load('sqs')
+      @config = Qanat.load('amzn')
       @domain = domain
     end
 

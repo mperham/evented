@@ -1,35 +1,6 @@
-require "cgi"
-require "base64"
-require "openssl"
-require "digest/sha1"
-require 'nokogiri'
-require 'pp'
-
-require 'fiber'
-require 'em-http'
-require 'authentication'
-
-def fiber_sleep(sec)
-  f = Fiber.current
-  EM.add_timer(sec) do
-    f.resume
-  end
-  Fiber.yield
-end
-
 module SQS
   DEFAULT_HOST = "queue.amazonaws.com"
   API_VERSION = "2008-01-01"
-
-  def self.run(&block)
-    # Ensure graceful shutdown of the connection to the broker
-    DaemonKit.trap('INT') { ::EM.stop }
-    DaemonKit.trap('TERM') { ::EM.stop }
-
-    # Start our event loop
-    DaemonKit.logger.debug("EM.run")
-    EM.run(&block)
-  end
 
   class Queue
     REQUEST_TTL = 30
@@ -37,7 +8,7 @@ module SQS
     include Amazon::Authentication
 
     def initialize(name)
-      @config = Qanat.load('sqs')
+      @config = Qanat.load('amzn')
       @name = name
     end
     
