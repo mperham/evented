@@ -3,7 +3,7 @@ require 'qanat'
 
 namespace :msg do
   task :push do
-    hash = Qanat.load('sqs')
+    hash = Qanat.load('amzn')
     
     ACCESS_KEY = hash['access_key']
     SECRET_KEY = hash['secret_key']

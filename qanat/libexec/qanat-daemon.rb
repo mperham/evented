@@ -57,19 +57,21 @@ Qanat.run do
   #   end.resume
   # end
   
-  # sqs = SQS::Queue.new('test')
-  # 
-  # sqs.poll(5) do |msg|
-  #   DaemonKit.logger.info "Processing #{msg}"
-  #   
-  #   # obj = YAML::load(msg)
-  #   # dispatch(obj, priority)
-  # end
-  
-  s3 = S3::Bucket.new('onespot-test')
   Fiber.new do
-    s3.put('sqs.rb', File.read(File.dirname(__FILE__) + '/../lib/sqs.rb'))
-    puts s3.get('sqs.rb')
+    sqs = SQS::Queue.new('test')
+  
+    sqs.poll(5) do |msg|
+      DaemonKit.logger.info "Processing #{msg}"
+    
+      # obj = YAML::load(msg)
+      # dispatch(obj, priority)
+    end
   end.resume
+  
+  # s3 = S3::Bucket.new('onespot-test')
+  # Fiber.new do
+  #   s3.put('sqs.rb', File.read(File.dirname(__FILE__) + '/../lib/sqs.rb'))
+  #   puts s3.get('sqs.rb')
+  # end.resume
 end
 

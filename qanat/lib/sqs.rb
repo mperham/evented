@@ -1,6 +1,6 @@
 module SQS
-  DEFAULT_HOST = "queue.amazonaws.com"
-  API_VERSION = "2008-01-01"
+  DEFAULT_HOST = URI.parse("http://queue.amazonaws.com/")
+  API_VERSION = "2009-02-01"
 
   class Queue
     REQUEST_TTL = 30
@@ -9,7 +9,7 @@ module SQS
 
     def initialize(name)
       @config = Qanat.load('amzn')
-      @name = name
+      @uri = URI.parse(url_for(name))
     end
     
     def poll(concurrency, &block)
@@ -26,10 +26,22 @@ module SQS
     
     private
     
+    def url_for(name)
+      request_hash = generate_request_hash("ListQueues", 'QueueNamePrefix' => name)
+      http = async_operation(:get, DEFAULT_HOST, request_hash, :timeout => timeout)
+      code = http.response_header.status
+      if code == 200
+        doc = Nokogiri::XML(http.response)
+        url = doc.xpath('//xmlns:QueueUrl').first.content
+        logger.info "Queue #{name} at #{url}"
+        return url
+      end
+    end
+    
     def delete_msg(handle)
       logger.info "Deleting #{handle}"
       request_hash = generate_request_hash("DeleteMessage", 'ReceiptHandle' => handle)
-      http = async_operation(:get, request_hash, :timeout => timeout)
+      http = async_operation(:get, @uri, request_hash, :timeout => timeout)
       code = http.response_header.status
       if code != 200
         logger.error "SQS delete returned an error response: #{code} #{http.response}"
@@ -39,7 +51,7 @@ module SQS
     def receive_msg(count=1, &block)
       request_hash = generate_request_hash("ReceiveMessage", 'MaxNumberOfMessages'  => count,
           'VisibilityTimeout' => 600)
-      http = async_operation(:get, request_hash, :timeout => timeout)
+      http = async_operation(:get, @uri, request_hash, :timeout => timeout)
       code = http.response_header.status
       if code == 200
         doc = Nokogiri::XML(http.response)
@@ -63,23 +75,25 @@ module SQS
           end
         else
           logger.info "Queue #{@name} is empty"
+          Fiber.sleep(5)
         end
       else
         logger.error "SQS returned an error response: #{code} #{http.response}"
+        Fiber.sleep(5)
         # TODO parse the response and print something useful
         # TODO retry a few times with exponentially increasing delay
       end
     end
     
-    def async_operation(method, parameters, opts)
+    def async_operation(method, uri, parameters, opts)
       f = Fiber.current
-      data = signed_parameters(parameters, method.to_s.upcase, DEFAULT_HOST, "/#{@name}")
+      data = signed_parameters(parameters, method.to_s.upcase, uri.host, uri.path)
       args = if method == :get
         { :query => data }.merge(opts)
       else
         { :body => data }.merge(opts)
       end
-      http = EventMachine::HttpRequest.new("http://#{DEFAULT_HOST}/#{@name}").send(method, args)
+      http = EventMachine::HttpRequest.new(uri).send(method, args)
       http.callback { f.resume(http) }
       http.errback { f.resume(http) }
 

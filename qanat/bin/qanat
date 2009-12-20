@@ -2,6 +2,12 @@
 #
 # Stub executable for qanat
 
+if RUBY_VERSION > '1.9.0'
+
 require File.dirname(__FILE__) + '/../config/environment'
 
 DaemonKit::Application.exec( DAEMON_ROOT + '/libexec/qanat-daemon.rb' )
+
+else
+  puts 'Qanat requires Ruby 1.9.x.'
+end

@@ -36,6 +36,7 @@ module Simpledb
     def get(id)
       request_hash = generate_request_hash("GetAttributes", 'ItemName' => id)
       http = async_operation(:get, request_hash, :timeout => timeout)
+      p http
       code = http.response_header.status
       if code != 200
         logger.error "SDB got an error response: #{code} #{http.response}"
