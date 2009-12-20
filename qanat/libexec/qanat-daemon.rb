@@ -48,14 +48,14 @@ IMAGE_SETS =
 Qanat.run do
   DaemonKit.logger.info "start"
   
-  # sdb = Simpledb::Database.new('images-staging')
-  # IMAGE_SETS.each_with_index do |images, idx|
-  #   Fiber.new do
-  #     images.each do |iid|
-  #       p [idx, sdb.get(iid)]
-  #     end
-  #   end.resume
-  # end
+  sdb = Simpledb::Database.new('images-staging')
+  IMAGE_SETS.each_with_index do |images, idx|
+    Fiber.new do
+      images.each do |iid|
+        p [idx, sdb.get(iid)]
+      end
+    end.resume
+  end
   
   Fiber.new do
     sqs = SQS::Queue.new('test')
@@ -68,10 +68,10 @@ Qanat.run do
     end
   end.resume
   
-  # s3 = S3::Bucket.new('onespot-test')
-  # Fiber.new do
-  #   s3.put('sqs.rb', File.read(File.dirname(__FILE__) + '/../lib/sqs.rb'))
-  #   puts s3.get('sqs.rb')
-  # end.resume
+  s3 = S3::Bucket.new('onespot-test')
+  Fiber.new do
+    s3.put('sqs.rb', File.read(File.dirname(__FILE__) + '/../lib/sqs.rb'))
+    puts s3.get('sqs.rb')
+  end.resume
 end
 

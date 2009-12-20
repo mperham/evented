@@ -5,6 +5,7 @@ require "digest/sha1"
 require 'digest/md5'
 require 'fiber'
 require 'yaml'
+require 'time'
 
 require 'nokogiri'
 require 'em-http'
