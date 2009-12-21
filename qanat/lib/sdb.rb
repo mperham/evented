@@ -1,4 +1,4 @@
-module Simpledb
+module SDB
   DEFAULT_HOST = 'sdb.amazonaws.com'
   API_VERSION = '2009-04-15'
   
@@ -33,15 +33,15 @@ module Simpledb
   </ResponseMetadata>
 </GetAttributesResponse>
 =end
-    def get(id)
-      request_hash = generate_request_hash("GetAttributes", 'ItemName' => id)
+    def get(id_or_array)
+      request_hash = generate_request_hash("GetAttributes", 'ItemName' => id_or_array)
       http = async_operation(:get, request_hash, :timeout => timeout)
       code = http.response_header.status
       if code != 200
         logger.error "SDB got an error response: #{code} #{http.response}"
         return nil
       end
-      { 'id' => id }.merge(to_attributes(http.response))
+      { 'id' => id_or_array }.merge(to_attributes(http.response))
     end
   
     def put(id, attribs)

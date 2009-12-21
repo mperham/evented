@@ -3,6 +3,8 @@ QANAT
 
 "Scalable AWS processing for Ruby"
 
+Qanat is one of the few words recognized by Scrabble that begin with Q and don't require a U following.
+
 Context
 ---------
 

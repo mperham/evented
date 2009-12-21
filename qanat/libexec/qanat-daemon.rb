@@ -48,7 +48,7 @@ IMAGE_SETS =
 Qanat.run do
   DaemonKit.logger.info "start"
   
-  sdb = Simpledb::Database.new('images-staging')
+  sdb = SDB::Database.new('images-staging')
   IMAGE_SETS.each_with_index do |images, idx|
     Fiber.new do
       images.each do |iid|
