@@ -1,3 +1,5 @@
+require 'mime/types'
+
 module S3
   USE_100_CONTINUE_PUT_SIZE = 1_000_000
   DEFAULT_HOST = 's3.amazonaws.com'
@@ -24,30 +26,62 @@ module S3
                                data)
       code = result.response_header.status
       if code != 200
-        raise ArgumentError, "S3 put failed: #{code} #{result.response}"
+        raise RuntimeError, "S3 put failed: #{code} #{result.response}"
       end
+      code == 200
     end
 
     def get(key, headers={}, &block)
       result = async_operation(:get, headers.merge(:key => CGI::escape(key)))
       code = result.response_header.status
+      if code == 404
+        return nil
+      end
       if code != 200
-        raise ArgumentError, "S3 get failed: #{result.response}"
+        raise RuntimeError, "S3 get failed: #{result.response}"
       end
       result.response
     end
 
     def head(key, headers={})
       result = async_operation(:head, headers.merge(:key => CGI::escape(key)))
-      p result
+      code = result.response_header.status
+      if code == 404
+        return nil
+      end
+      code == 200
     end
 
     def delete(key, headers={})
       result = async_operation(:delete, headers.merge(:key => CGI::escape(key)))
-      p result
+      code = result.response_header.status
+      code == 200
+    end
+    
+    def put_file(filename, data)
+      digest = Digest::MD5.hexdigest(data)
+      headers = head(file_path)
+      if headers and headers[MD5SUM] == digest
+        logger.info "[S3] Skipping upload of #{file_path}, unchanged..."
+        # skip push to S3
+      else
+        logger.info "[S3] Pushing #{file_path}"
+        options = { MD5SUM => digest }
+        type = guess_mimetype(file_path)
+        options["Content-Type"] = type if !type.blank?
+        options["Content-Encoding"] = 'gzip' if file_path =~ /\.gz$/
+        put(file_path, data, { 'x-amz-acl' => 'public-read' }.merge(options))
+      end
+      file_path
     end
     
     private
+    
+    MD5SUM = 'x-amz-meta-md5sum'
+
+    def guess_mimetype(filepath)
+      MIME::Types.type_for(filepath)[0].to_s
+    end
 
     def async_operation(method, headers={}, body=nil)
       f = Fiber.current

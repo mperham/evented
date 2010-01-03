@@ -24,15 +24,43 @@ module SQS
       end
     end
     
+    def push(msg)
+      request_hash = generate_request_hash("SendMessage", 'MessageBody' => msg)
+      http = async_operation(:post, @uri, request_hash, :timeout => timeout)
+      code = http.response_header.status
+      if code != 200
+        logger.error "SQS send_message returned an error response: #{code} #{http.response}"
+      end
+    end
+    
     private
     
-    def url_for(name)
+    def create(name)
+      request_hash = generate_request_hash("CreateQueue", 'QueueName' => name)
+      http = async_operation(:post, DEFAULT_HOST, request_hash, :timeout => timeout)
+      code = http.response_header.status
+      if code != 200
+        logger.error "SQS send_message returned an error response: #{code} #{http.response}"
+      end
+    end
+    
+    def url_for(name, recur=false)
+      raise ArgumentError, "No queue given" if !name || name.strip == '' 
       request_hash = generate_request_hash("ListQueues", 'QueueNamePrefix' => name)
       http = async_operation(:get, DEFAULT_HOST, request_hash, :timeout => timeout)
       code = http.response_header.status
       if code == 200
         doc = Nokogiri::XML(http.response)
-        url = doc.xpath('//xmlns:QueueUrl').first.content
+        tag = doc.xpath('//xmlns:QueueUrl').first
+        if !tag
+          if !recur
+            create(name)
+            return url_for(name, true)
+          else
+            raise ArgumentError, "Unable to create queue '#{name}'"
+          end
+        end
+        url = tag.content
         logger.info "Queue #{name} at #{url}"
         return url
       end
@@ -74,7 +102,7 @@ module SQS
             end
           end
         else
-          logger.info "Queue #{@name} is empty"
+          logger.info "Queue #{@uri} is empty"
           Fiber.sleep(5)
         end
       else

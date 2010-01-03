@@ -3,14 +3,31 @@
 # of strange things might start happening...
 DaemonKit::Application.running! do |config|
   # Trap signals with blocks or procs
-  # config.trap( 'INT' ) do
-  #   # do something clever
-  # end
-  # config.trap( 'TERM', Proc.new { puts 'Going down' } )
+  config.trap( 'HUP' ) do
+    # Dump the REE stack traces
+    p caller_for_all_threads if Object.respond_to? :caller_for_all_threads
+  end
+  config.trap('TERM') do
+    # TODO print out the number of messages waiting to be processed
+  end
+end
+
+Qanat.run do
+  DaemonKit.logger.info "start"
+
+  Fiber.new do
+    sqs = SQS::Queue.new(DaemonKit.arguments.options[:queue_name])
+    sqs.poll(5) do |msg|
+      DaemonKit.logger.info "Processing #{msg}"
+    
+      obj = YAML::load(msg)
+      dispatch(obj, priority)
+    end
+  end.resume
 end
 
 def dispatch(msg, priority)
-  notify_upon_exception('jobber', msg) do |hash|
+  notify_upon_exception('qanat', msg) do |hash|
     name = hash.fetch(:msg_type).to_s.camelize
     profile hash.inspect do
       name.constantize.new.process(hash, priority)

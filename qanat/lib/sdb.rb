@@ -41,7 +41,7 @@ module SDB
         logger.error "SDB got an error response: #{code} #{http.response}"
         return nil
       end
-      { 'id' => id_or_array }.merge(to_attributes(http.response))
+      to_attributes(http.response)
     end
   
     def put(id, attribs)
