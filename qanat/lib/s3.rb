@@ -16,10 +16,6 @@ module S3
     end
     
     def put(key, data=nil, headers={})
-      if (data.respond_to?(:lstat) && data.lstat.size >= USE_100_CONTINUE_PUT_SIZE) ||
-         (data.respond_to?(:size)  && data.size       >= USE_100_CONTINUE_PUT_SIZE)
-        headers['expect'] = '100-continue'
-      end
       result = async_operation(:put, 
                                headers.merge(:key => CGI::escape(key), 
                                        "content-md5" => Base64.encode64(Digest::MD5.digest(data)).strip), 
@@ -49,7 +45,7 @@ module S3
       if code == 404
         return nil
       end
-      code == 200
+      result.response_header
     end
 
     def delete(key, headers={})
