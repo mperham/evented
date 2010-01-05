@@ -26,7 +26,7 @@ module SQS
     
     def push(msg)
       request_hash = generate_request_hash("SendMessage", 'MessageBody' => msg)
-      http = async_operation(:post, @uri, request_hash, :timeout => timeout)
+      http = async_operation(:get, @uri, request_hash, :timeout => timeout)
       code = http.response_header.status
       if code != 200
         logger.error "SQS send_message returned an error response: #{code} #{http.response}"

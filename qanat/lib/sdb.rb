@@ -48,12 +48,12 @@ module SDB
       hash = { 'ItemName' => id }
       idx = 0
       attribs.each_pair do |k, v|
-        hash["Attribute.#{idx}.Name"] = URLencode(k)
-        hash["Attribute.#{idx}.Value"] = URLencode(v)
+        hash["Attribute.#{idx}.Name"] = CGI::escape(k)
+        hash["Attribute.#{idx}.Value"] = CGI::escape(v)
         idx = idx + 1
       end
       request_hash = generate_request_hash("PutAttributes", hash)
-      http = async_operation(:post, { :body => request_hash, :timeout => timeout })
+      http = async_operation(:post, request_hash, :timeout => timeout)
     end
     
     private

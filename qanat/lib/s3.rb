@@ -58,7 +58,7 @@ module S3
       code == 200
     end
     
-    def put_file(filename, data)
+    def put_file(file_path, data)
       digest = Digest::MD5.hexdigest(data)
       headers = head(file_path)
       if headers and headers[MD5SUM] == digest
@@ -76,6 +76,10 @@ module S3
     end
     
     private
+    
+    def logger
+      DaemonKit.logger
+    end
     
     MD5SUM = 'x-amz-meta-md5sum'
 
