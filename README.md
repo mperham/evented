@@ -21,26 +21,26 @@ I'd like to see examples of calling:
 Examples
 ==========
 
-*thin/thumbnailer.rb*
+**thin/thumbnailer.rb**
 
 A Thin-based thumbnail service which transparently pulls original images off S3 and thumbnails them according to URL parameters.
 
-*qanat*
+**qanat**
 
 A SQS-based message queue processor.  Qanat will process up to 10 messages concurrently.
 
 Sidenote: Qanat is one of the few official Scrabble words which does
 not contain a U.  It is the Arabic word for an underground irrigation canal.
 
-*evented_magick*
+**evented_magick**
 
-An eventmachine-aware version of MiniMagick which uses the EM.system call to increase performance.
+An eventmachine-aware version of `MiniMagick` which uses the `EM.system` call to increase performance.
 
 Your Host
 =============
 
 Mike Perham, mperham AT gmail.com
-http://github.com/mperham
-http://twitter.com/mperham
-http://mikeperham.com
+<http://github.com/mperham>
+<http://twitter.com/mperham>
+<http://mikeperham.com>
 
