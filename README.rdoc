@@ -30,6 +30,14 @@ A SQS-based message queue processor.  Qanat will process up to 10 messages concu
 Sidenote: Qanat is one of the few official Scrabble words which does
 not contain a U.  It is the Arabic word for an underground irrigation canal.
 
+=== evented_magick
+
+An eventmachine-aware version of MiniMagick which uses the EM.system call to increase performance.
+
 == Your Host
 
-I'm *mperham* everywhere that matters.
+Mike Perham, mperham AT gmail.com
+http://github.com/mperham
+http://twitter.com/mperham
+http://mikeperham.com
+
