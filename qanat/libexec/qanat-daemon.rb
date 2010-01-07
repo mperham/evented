@@ -12,16 +12,19 @@ DaemonKit::Application.running! do |config|
   end
 end
 
+$:.unshift(File.expand_path(File.join(File.dirname(__FILE__), '..', 'lib', 'processors')))
+
 require 'dispatch'
-require 'crawl_images'
 
 Qanat.run do
   DaemonKit.logger.info "start"
 
   Fiber.new do
     sqs = SQS::Queue.new(DaemonKit.arguments.options[:queue_name])
-    sqs.poll(1) do |msg|
-      Qanat.dispatch(msg)
+    sqs.poll(3) do |msg|
+      Fiber.new do 
+        Qanat.dispatch(msg)
+      end.resume
     end
   end.resume
 end

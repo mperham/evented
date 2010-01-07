@@ -23,7 +23,7 @@ namespace :msg do
     SECRET_KEY = hash['secret_key']
     to = ENV['TO'] || 'images'
     from = ENV['FROM'] || 'tasks_production_lowest'
-    count = Integer(ENV['COUNT'] || '5')
+    count = Integer(ENV['COUNT'] || '10')
     sqs = RightAws::SqsGen2.new(ACCESS_KEY, SECRET_KEY, :protocol => 'http', :port => 80)
     from_q = sqs.queue(from)
     to_q = sqs.queue(to)
