@@ -13,8 +13,8 @@ Based on mini_magick by <http://github.com/probablycorey>
 Author
 ==========
 
-Mike Perham, mperham AT gmail.com
-<http://github.com/mperham>
-<http://twitter.com/mperham>
-<http://mikeperham.com>
+Mike Perham, mperham AT gmail.com,
+[Github](http://github.com/mperham), 
+[Twitter](http://twitter.com/mperham),
+[Blog](http://mikeperham.com)
 
