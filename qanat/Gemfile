@@ -5,7 +5,12 @@ gem 'daemon-kit', '>= 0.1.7.12'
 gem 'em-http-request', '>= 0.2.6'
 gem 'mime-types', '>= 1.16'
 gem 'activerecord', '= 2.3.5'
-gem 'pg', '>= 0.8.0'
+gem 'postgres-pr', '>= 0.6.0'
+gem 'eventmachine', '>= 0.10.12'
+gem 'em_postgresql', '>= 0.1.1'
 
-gem "rspec", :only => :testing
-gem "mocha", :only => :testing
+group :test do
+  gem "rspec"
+  gem "mocha"
+  gem 'right_aws', :git => "git://github.com/mperham/right_aws.git"
+end

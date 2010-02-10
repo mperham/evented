@@ -3,9 +3,14 @@
 
 DAEMON_ROOT = "#{File.expand_path(File.dirname(__FILE__))}/.." unless defined?( DAEMON_ROOT )
 
-# Use bundler if available
-if File.exists?( File.join( DAEMON_ROOT, 'vendor', 'gems', 'environment.rb' ) )
-  require File.join( DAEMON_ROOT, 'vendor', 'gems', 'environment' )
+begin
+  require File.expand_path('../../.bundle/environment', __FILE__)
+rescue LoadError
+  puts "Please install bundler:"
+  puts "  gem install bundler -v '~>0.9.3'"
+  puts "and then initialize Qanat's gem environment:"
+  puts "  bundle install && bundle lock"
+  exit
 end
 
 module DaemonKit

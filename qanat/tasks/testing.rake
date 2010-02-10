@@ -1,6 +1,7 @@
 require 'right_aws'
 require 'qanat'
 
+# Some sample Rake tasks to perform common queue tasks.
 namespace :msg do
   task :push do
     hash = Qanat.load('amzn')

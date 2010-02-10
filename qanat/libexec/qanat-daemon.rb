@@ -12,8 +12,6 @@ DaemonKit::Application.running! do |config|
   end
 end
 
-$:.unshift(File.expand_path(File.join(File.dirname(__FILE__), '..', 'lib', 'processors')))
-
 require 'dispatch'
 
 Qanat.run do
