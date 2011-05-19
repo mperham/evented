@@ -5,7 +5,7 @@
 
 Gem::Specification.new do |s|
   s.name = %q{evented_magick}
-  s.version = ""
+  s.version = "0.1.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Mike Perham"]
@@ -19,6 +19,8 @@ Gem::Specification.new do |s|
     "Gemfile.lock",
     "README.md",
     "Rakefile",
+    "VERSION",
+    "evented_magick.gemspec",
     "examples/processor.rb",
     "lib/evented_magick.rb",
     "lib/image_temp_file.rb"
