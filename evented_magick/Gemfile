@@ -1,6 +1,7 @@
 source :rubygems
 
 group :dev do
+  gem 'rspec'
   gem 'rake'
   gem 'jeweler'
 end
