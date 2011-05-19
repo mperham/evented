@@ -2,8 +2,7 @@ require "open-uri"
 require "stringio"
 require "fileutils"
 require "open3"
-
-require File.join(File.dirname(__FILE__), '/image_temp_file')
+require 'tempfile'
 
 module EventedMagick
   class MiniMagickError < RuntimeError; end
@@ -18,7 +17,7 @@ module EventedMagick
     class << self
       def from_blob(blob, ext = nil)
         begin
-          tempfile = ImageTempFile.new(ext)
+          tempfile = Tempfile.new(['evented_magick', ext.to_s])
           tempfile.binmode
           tempfile.write(blob)
         ensure
