@@ -1,0 +1,14 @@
+begin
+  require 'jeweler'
+  Jeweler::Tasks.new do |gem|
+    gem.name = 'evented_magick'
+    gem.summary = "MiniMagick on Eventmachine"
+    gem.email = "mperham@gmail.com"
+    gem.homepage = "https://github.com/mperham/evented/tree/master/evented_magick"
+    gem.authors = ["Mike Perham"]
+  end
+
+  Jeweler::GemcutterTasks.new
+rescue LoadError
+  puts "Jeweler, or one of its dependencies, is not available. Install it with: gem install jeweler"
+end
